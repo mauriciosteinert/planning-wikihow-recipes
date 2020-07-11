@@ -1,46 +1,71 @@
 
-
-"""
-Parse input arguments
-"""
-
-import argparse
 import wikiHow.WikiHow as WikiHow
+import utils
+import spacy
 
-def parseArgs():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--generate-wikihow-dataset',
-                        action='store_true',
-                        help='Download and generate WikiHow Recipes Dataset')
+class App:
+    def __init__(self):
+        self.config = utils.parseArgs()
+        self.wikihow_dataset = WikiHow.WikiHow(self.config.wikihow_dataset_dir)
+        self.nlp = spacy.load('en_core_web_sm')
+        self.N_GRAMS = 6
 
-    parser.add_argument('--generate-pddl',
-                        action='store_true',
-                        help='Generate PDDL representation for dataset instances as specified by wikihow-dataset-dir argument')
+    def generate_actions(self, instance):
+        print("Extracting actions ...")
 
-    parser.add_argument('--wikihow-dataset-dir',
-                        help='Specify WikiHow Recipes Dataset directory')
+        for sentence in instance:
+            doc = self.nlp(sentence)
+            deps = [(x, x.dep_) for x in doc]
+            actions = []
 
-    args = parser.parse_args()
+            print()
+            print(sentence)
+            print(deps)
 
-    if args.wikihow_dataset_dir == None:
-        raise Exception("You must provide --wikihow-dataset-dir information!")
+            for idx_deps, dep in enumerate(deps):
+                if dep[1] in ('ROOT', 'conj'):
+                    # Find direct object
+                    end_idx = idx_deps + self.N_GRAMS if idx_deps + self.N_GRAMS < len(deps) else len(deps)
+                    dobj = [x for x in deps[idx_deps + 1:end_idx] if x[1] == 'dobj']
 
-    return args
+                    if dobj:
+                        obj01 = dobj[0]
+
+                        # Check for prepositions after direct object
+                        start_idx = deps.index(obj01)
+                        end_idx = start_idx + self.N_GRAMS if start_idx + self.N_GRAMS < len(deps) else len(deps)
+                        prep = [x for x in deps[start_idx + 1:end_idx]]
+
+                        if prep:
+                            # Try to get object after preposition
+                            start_idx = deps.index(prep[0])
+                            end_idx = start_idx + self.N_GRAMS if start_idx + self.N_GRAMS < len(deps) else len(deps)
+                            dobj2 = [x for x in deps[start_idx + 1:end_idx] if x[1] == 'pobj']
+
+                            if dobj2:
+                                actions.append({'action': dep[0], 'object1': str(obj01[0]), 'object2': dobj2[0][0]})
+                            else:
+                                actions.append({'action': dep[0], 'object': str(obj01[0])})
+
+                        else:
+                            actions.append({'action': dep[0], 'object': str(obj01[0])})
 
 
+            print("Actions: ", actions)
 
-def main():
-    config = parseArgs()
-    wikihow_dataset = WikiHow.WikiHow(config.wikihow_dataset_dir)
 
-    entry = wikihow_dataset.get_entry(0)
-    print(wikihow_dataset.process_instance(entry[1]))
+    def run(self):
+        if self.config.generate_wikihow_dataset:
+            self.wikihow_dataset.download()
+        elif self.config.generate_pddl:
+            for idx, file in enumerate(self.wikihow_dataset.get_files_list()):
+                # print(idx, file)
+                instance = self.wikihow_dataset.process_instance(self.wikihow_dataset.get_instance(idx)[1])
+                self.generate_actions(instance)
+                print("--------------------------------------------------")
 
-    if config.generate_wikihow_dataset:
-        wikihow_dataset.download()
-    elif config.generate_pddl:
-        gen_pddl()
 
 
 if __name__ == "__main__":
-    main()
+    app = App()
+    app.run()
