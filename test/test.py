@@ -126,7 +126,7 @@ class TestSuite(unittest.TestCase):
         for idx, file in enumerate(wikihow_dataset.get_files_list()):
             ground_truth_entry = [x for x in ground_truth_values if x['instance'] == os.path.split(file)[-1]][0]
 
-            instance_text = wikihow_dataset.get_entry(idx)[1]
+            instance_text = wikihow_dataset.get_instance(idx)[1]
             self.assertEqual(ground_truth_entry['data'], wikihow_dataset.process_instance(instance_text))
 
 
