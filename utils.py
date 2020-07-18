@@ -11,7 +11,12 @@ def parseArgs():
                         help='Generate PDDL representation for dataset instances as specified by wikihow-dataset-dir argument')
 
     parser.add_argument('--wikihow-dataset-dir',
+                        metavar='wikihow_dataset_dir',
                         help='Specify WikiHow Recipes Dataset directory')
+
+    parser.add_argument('--solver',
+                        metavar='solver',
+                        help='Select solver to use: rule-based | auto')
 
     args = parser.parse_args()
 
