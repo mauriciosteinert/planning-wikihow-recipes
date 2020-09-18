@@ -1,30 +1,68 @@
 import spacy
+import os
+import pyperplan
 
 class RuleBased:
     def __init__(self):
+        self.nlp = spacy.load('en_core_web_sm')
         self.objects = [
             {'name': 'water', 'type': 'ingredient'},
 
             {'name': 'pasta', 'type': 'ingredient'},
+            {'name': 'dough', 'type': 'ingredient'},
             {'name': 'salt', 'type': 'ingredient'},
             {'name': 'sauce', 'type': 'ingredient'},
             {'name': 'noodle', 'type': 'ingredient'},
+            {'name': 'broccoli', 'type': 'ingredient'},
+            {'name': 'floret', 'type': 'ingredient'},
+            {'name': 'egg', 'type': 'ingredient'},
+            {'name': 'barley', 'type': 'ingredient'},
+            {'name': 'vinegar', 'type': 'ingredient'},
+            {'name': 'sugar', 'type': 'ingredient'},
+            {'name': 'butter', 'type': 'ingredient'},
+            {'name': 'oil', 'type': 'ingredient'},
+            {'name': 'cheese', 'type': 'ingredient'},
+            {'name': 'flour', 'type': 'ingredient'},
+            {'name': 'milk', 'type': 'ingredient'},
+            {'name': 'chocolate', 'type': 'ingredient'},
+            {'name': 'rice', 'type': 'ingredient'},
+            {'name': 'meat', 'type': 'ingredient'},
+            {'name': 'garlic', 'type': 'ingredient'},
+            {'name': 'pepper', 'type': 'ingredient'},
+            {'name': 'potato', 'type': 'ingredient'},
+            {'name': 'bread', 'type': 'ingredient'},
+            {'name': 'onion', 'type': 'ingredient'},
+            {'name': 'vegetable', 'type': 'ingredient'},
+            {'name': 'juice', 'type': 'ingredient'},
 
             {'name': 'pot', 'type': 'recipient'},
-            {'name': 'colander', 'type': 'recipient'}
+            {'name': 'colander', 'type': 'recipient'},
+            {'name': 'skillet', 'type': 'recipient'},
+            {'name': 'saucepan', 'type': 'recipient'},
+            {'name': 'basket', 'type': 'recipient'},
+            {'name': 'bowl', 'type': 'recipient'}
             ]
 
         self.actions = [
-            {'name': 'fill', 'keywords': ['fill'], 'effects': [('filled', ['recipient'])],
+            {'name': 'heat', 'keywords': ['heat'], 'effects': [('heated', ['ingredient', 'recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
+
+            {'name': 'clean', 'keywords': ['clean'], 'effects': [('cleaned', ['ingredient'])],
+            'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient')]},
+
+            {'name': 'cook', 'keywords': ['cook', 'steam', 'bake'], 'effects': [('cooked', ['ingredient'])],
+            'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
+
+            {'name': 'cut', 'keywords': ['cut', 'slice'], 'effects': [('cutted', ['ingredient'])],
+            'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient')]},
 
             {'name': 'cover', 'keywords': ['cover'], 'effects': [('covered', ['recipient'])],
+            'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'recipient')]},
+
+            {'name': 'put', 'keywords': ['put', 'add', 'fill', 'toss', 'place', 'beat', 'sprinkle', 'mix'], 'effects': [('in', ['ingredient', 'recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
 
-            {'name': 'put', 'keywords': ['put', 'add', 'toss'], 'effects': [('in', ['ingredient', 'recipient'])],
-            'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
-
-            {'name': 'pour', 'keywords': ['pour'], 'effects': [('poured', ['recipient'])],
+            {'name': 'pour', 'keywords': ['pour', 'drain'], 'effects': [('poured', ['recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
 
             {'name': 'stir', 'keywords': ['stir'], 'effects': [('stirred', ['recipient'])],
@@ -39,66 +77,66 @@ class RuleBased:
 
 
     def generate(self, instance):
+        total_discarded_actions = 0
+        total_detected_actions = 0
+
         # Get all recipients and ingredients on instance
-        nlp = spacy.load('en_core_web_sm')
+
         actions_list = []
         objects_list = []
         instance_steps_list = []
+        goals_str = ""
 
         flatten = lambda l: [item for sublist in l for item in sublist]
 
         for sentence in instance['data']:
-            print("\nSentence: {}".format(sentence))
-            doc = nlp(sentence)
+            doc = self.nlp(sentence)
             actions = [action for action in self.actions for v in doc if str(v.lemma_) in action['keywords'] and str(v.dep_) == 'ROOT']
-
-            for action in actions:
-                actions_list.append(action)
-
             objects = [object for object in self.objects for v in doc if object['name'] == str(v.lemma_)]
+
+            total_detected_actions += len(actions)
 
             for obj in objects:
                 objects_list.append(obj)
-            # instance_steps_list.append({'text': sentence, 'actions': actions, 'objects': objects})
+
+            for action in actions:
+                actions_list.append(action)
 
             action_preconditions_str = ""
             unsolved_preconditions_list = []
 
             if len(actions) > 0:
+                action_params_list = []
                 for precondition in actions[0]['preconditions']:
                     # Find object in step that fits precondition type
                     object = [obj for obj in objects if obj['type'] == precondition[1]]
 
                     if len(object) > 0:
+                        action_params_list.append(object)
                         action_preconditions_str += "({} {}) ".format(precondition[0], object[0]['name'])
                     else:
                         # No object fits requirements, unsolved precondition
                         unsolved_preconditions_list.append(precondition)
 
+                # Process effect parameters to include into goal
+                if len(unsolved_preconditions_list) == 0:
+                    params_str = ""
+                    params_list = [p1 for p1 in action_params_list for p2 in actions[0]['effects'][0][1] if p1[0]['type'] == p2]
 
-            print("** Action: {}".format(actions))
-            print("** Action preconditions: {}".format(action_preconditions_str))
-            print("** Unsolved action preconditions: {}".format(unsolved_preconditions_list))
+                    for p in params_list:
+                        params_str += "{} ".format(p[0]['name'])
 
-            # User interaction to manually solve pending dependencies
-            if len(unsolved_preconditions_list) > 0:
-                print("------------------------------------------------------------------------")
-                print("----- There are some unsolved dependencies. Please provide object names to manually fill in the blanks")
-                for unsolved in unsolved_preconditions_list:
-                    previous_obj = [obj['name'] for obj in objects_list if obj['type'] == unsolved[1]]
-                    print("Please provide a name for object type {} (previous seen objects: {})".format(unsolved[1], previous_obj))
-                    # val = input()
-                    # TODO check if input value is valid
-                    # action_preconditions_str += "({} {}) ".format(precondition[0], str(val))
-                # print("** Action preconditions: {}".format(action_preconditions_str))
+                    goals_str += "({} {}) ".format(actions[0]['effects'][0][0], params_str)
+                else:
+                    total_discarded_actions += 1
 
-        # print("***** All actions list: {}".format(actions_list))
-        # print("***** All objects list: {}".format(objects_list))
+            # print("** Action: {}".format(actions))
+            # print("** Action preconditions: {}".format(action_preconditions_str))
+            # print("** Unsolved action preconditions: {}".format(unsolved_preconditions_list))
 
-        print("\n\n")
+        #
         actions_list = list({action['name']:action for action in actions_list}.values())
         objects_list = list({obj['name']:obj for obj in objects_list}.values())
-        # print(objects_list)
 
         #
         # Generate domain file
@@ -108,19 +146,21 @@ class RuleBased:
         types_set = set(types_list)
 
         domain_str += "  (:types\n"
-        for type in types_set:
-            domain_str += "    {} - object\n".format(type)
+        domain_str += "    ingredient recipient - object"
+        # for type in types_set:
+        #     domain_str += "    {} - object\n".format(type)
 
         domain_str += "  )\n"
 
         domain_str += "  (:predicates\n"
+        domain_str += "    (have ?param - object)\n"
         effects_list = []
 
         for action in actions_list:
             for effect in action['effects']:
                 if effect[0] not in effects_list:
                     params_str = ""
-                    for idx, param in enumerate(action['parameters']):
+                    for idx, param in enumerate(effect[1]):
                         params_str += "?param{} - {} ".format(idx, param)
                     domain_str += "    ({} {})\n".format(effect[0], params_str)
 
@@ -181,6 +221,7 @@ class RuleBased:
         #
         # Generate problem file
         problem_str = "(define (problem {})\n".format(instance['name'].lower())
+        problem_str +=   "(:domain {})\n".format(instance['name'].lower())
         # Objects and type definition
         problem_str += "  (:objects\n"
 
@@ -198,22 +239,40 @@ class RuleBased:
         problem_str += "    {}\n".format(init_have_objects_str)
         problem_str += "  )\n"
 
-        # TODO
-        # Goals definition
-        goals_str = ""
         problem_str += "  (:goal\n"
         problem_str += "    (and {})\n".format(goals_str)
         problem_str += "  )\n"
 
         problem_str += ")"
-        print("---------------------------------------------------")
-        print(problem_str)
-        print("---------------------------------------------------")
-        print(domain_str)
+        #
 
+
+        # print("---------------------------------------------------")
+        # print(problem_str)
+        # print("---------------------------------------------------")
+        # print(domain_str)
+        # Write domain and problem PDDL files
+        domain_file = os.path.join('./pddl', instance['name'].lower() + "-domain.pddl")
+        problem_file = os.path.join('./pddl', instance['name'].lower() + "-problem.pddl")
+        solution_file = os.path.join('./pddl', instance['name'].lower() + "-problem-solution.txt")
+
+        with open(domain_file, "w") as f:
+            f.write(domain_str)
+        with open(problem_file, "w") as f:
+            f.write(problem_str)
+
+        plan = pyperplan.search_plan(domain_file, problem_file, pyperplan.SEARCHES['gbf'], pyperplan.HEURISTICS['blind'])
+
+        if plan == None:
+            plan = []
+        else:
+            with open(solution_file, "w") as f:
+                for line in plan:
+                    f.write(str(line))
+
+        return len(instance['data']), total_detected_actions, total_discarded_actions, len(plan)
 
 
     def solve(self, instance):
         print("Running solver ...")
-        self.generate(instance)
-        return None
+        return self.generate(instance)

@@ -3,7 +3,9 @@ import os
 import pyperplan
 
 class RuleBased2:
-    def __init__(self):
+    def __init__(self, interactive=False, config=None):
+        self.interactive = interactive
+        self.config = config
         self.nlp = spacy.load('en_core_web_sm')
         self.objects = [
             {'name': 'water', 'type': 'ingredient'},
@@ -44,13 +46,10 @@ class RuleBased2:
             ]
 
         self.actions = [
-            {'name': 'heat', 'keywords': ['heat'], 'effects': [('heated', ['ingredient', 'recipient'])],
-            'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
-
             {'name': 'clean', 'keywords': ['clean'], 'effects': [('cleaned', ['ingredient'])],
-            'parameters': ['ingredient'], 'preconditions': [('have', 'ingredient')]},
+            'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient')]},
 
-            {'name': 'cook', 'keywords': ['cook', 'steam', 'bake'], 'effects': [('cooked', ['ingredient'])],
+            {'name': 'cook', 'keywords': ['cook', 'steam', 'bake', 'heat'], 'effects': [('cooked', ['ingredient', 'recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
 
             {'name': 'cut', 'keywords': ['cut', 'slice'], 'effects': [('cutted', ['ingredient'])],
@@ -75,6 +74,9 @@ class RuleBased2:
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]}
         ]
 
+        if self.config == None:
+            raise Exception("Configuration parameters not available!")
+
 
     def solve(self, instance):
         actions_list = []
@@ -83,9 +85,9 @@ class RuleBased2:
 
         total_identified_actions = 0
 
-        domain_file = os.path.join("./pddl/", instance['name'].lower() + "-domain.pddl")
-        problem_file = os.path.join("./pddl/", instance['name'].lower() + "-problem.pddl")
-        plan_file = os.path.join("./pddl/", instance['name'].lower() + "-plan.txt")
+        domain_file = os.path.join(self.config.pddl_destination_folder, instance['name'].lower() + "-domain.pddl")
+        problem_file = os.path.join(self.config.pddl_destination_folder, instance['name'].lower() + "-problem.pddl")
+        plan_file = os.path.join(self.config.pddl_destination_folder, instance['name'].lower() + "-plan.txt")
 
         for sentence in instance['data']:
             # print(sentence)
@@ -109,7 +111,23 @@ class RuleBased2:
                     if object != None:
                         effect_objects_str += "{} ".format(object['name'])
                     else:
-                        break
+                        # If running in interactive mode, request to fill in missing parameters
+                        if self.interactive:
+                            print("Sentence: {}".format(sentence))
+                            print("** Please provide missing information for parameter type {}:".format(action_parameter))
+                            print("** Previous objects: {}".format([obj['name'] for obj in objects_list]))
+                            object_input = input()
+
+                            if object_input != "" and object_input != None:
+                                print("Assigning object values {}".format(object_input))
+                                object = {'name': object_input, 'type': action_parameter}
+                                objects.append(object)
+                                effect_objects_str += "{} ".format(object['name'])
+                            else:
+                                object = None
+                                break
+                        else:
+                            break
 
                 if object != None:
                     for action in actions:
@@ -121,12 +139,8 @@ class RuleBased2:
                             obj = next((obj['name'] for obj in objects if obj['type'] == effect_param), None)
                             effect_params_str += "{} ".format(obj)
 
+                        print("***** Adding goal {} {}".format(effect[0], effect_params_str))
                         goals_list.append("({} {}) ".format(effect[0], effect_params_str))
-
-            print("\n\nSentence: {}".format(sentence))
-            print("Actions: {}".format(actions))
-            print("Objects: {}".format(objects))
-
 
         # Eliminate duplicated actions and objects
         actions_list = list({action['name']:action for action in actions_list}.values())
@@ -169,7 +183,6 @@ class RuleBased2:
             f.write("  (:requirements :typing)\n")
             f.write("  (:types\n    ingredient recipient - object\n  )\n")
 
-
             # Predicates
             f.write("  (:predicates\n")
             # Static entry - mandatory for all actions
@@ -208,9 +221,11 @@ class RuleBased2:
 
             f.write(")\n")
 
-
             # Problem file
             with open(problem_file, "w") as f:
+                for sentence in instance['data']:
+                    f.write("; {}\n".format(sentence))
+
                 f.write("(define (problem {}-problem)\n".format(instance['name'].lower()))
                 f.write("  (:domain {})\n".format(instance['name'].lower()))
 
