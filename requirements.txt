@@ -1,0 +1,4 @@
+spacy
+pyperplan
+func_timeout
+numpy
