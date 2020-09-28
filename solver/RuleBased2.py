@@ -1,15 +1,16 @@
 import spacy
 import os
 import pyperplan
+from func_timeout import func_timeout, FunctionTimedOut
 
 class RuleBased2:
     def __init__(self, interactive=False, config=None):
         self.interactive = interactive
         self.config = config
         self.nlp = spacy.load('en_core_web_sm')
+
         self.objects = [
             {'name': 'water', 'type': 'ingredient'},
-
             {'name': 'pasta', 'type': 'ingredient'},
             {'name': 'dough', 'type': 'ingredient'},
             {'name': 'salt', 'type': 'ingredient'},
@@ -36,32 +37,161 @@ class RuleBased2:
             {'name': 'onion', 'type': 'ingredient'},
             {'name': 'vegetable', 'type': 'ingredient'},
             {'name': 'juice', 'type': 'ingredient'},
+            {'name': 'bean', 'type': 'ingredient'},
+            {'name': 'syrup', 'type': 'ingredient'},
+            {'name': 'lemon', 'type': 'ingredient'},
+            {'name': 'seed', 'type': 'ingredient'},
+            {'name': 'salmon', 'type': 'ingredient'},
+            {'name': 'cookie', 'type': 'ingredient'},
+            {'name': 'mushroom', 'type': 'ingredient'},
+            {'name': 'corn', 'type': 'ingredient'},
+            {'name': 'apple', 'type': 'ingredient'},
+            {'name': 'chicken', 'type': 'ingredient'},
+            {'name': 'beef', 'type': 'ingredient'},
+            {'name': 'olive', 'type': 'ingredient'},
+            {'name': 'ham', 'type': 'ingredient'},
+            {'name': 'pork', 'type': 'ingredient'},
+            {'name': 'tomato', 'type': 'ingredient'},
+            {'name': 'honey', 'type': 'ingredient'},
+            {'name': 'grease', 'type': 'ingredient'},
+            {'name': 'shrimp', 'type': 'ingredient'},
+            {'name': 'yogurt', 'type': 'ingredient'},
+            {'name': 'nut', 'type': 'ingredient'},
+            {'name': 'tofu', 'type': 'ingredient'},
+            {'name': 'banana', 'type': 'ingredient'},
+            {'name': 'strawberry', 'type': 'ingredient'},
+            {'name': 'bacon', 'type': 'ingredient'},
+            {'name': 'tuna', 'type': 'ingredient'},
+            {'name': 'pineapple', 'type': 'ingredient'},
+            {'name': 'watermelon', 'type': 'ingredient'},
+            {'name': 'steak', 'type': 'ingredient'},
+            {'name': 'orange', 'type': 'ingredient'},
+            {'name': 'ginger', 'type': 'ingredient'},
+            {'name': 'peanut', 'type': 'ingredient'},
+            {'name': 'soda', 'type': 'ingredient'},
+            {'name': 'wine', 'type': 'ingredient'},
+            {'name': 'cabbage', 'type': 'ingredient'},
+            {'name': 'marshmallow', 'type': 'ingredient'},
+            {'name': 'lime', 'type': 'ingredient'},
+            {'name': 'pumpkin', 'type': 'ingredient'},
+            {'name': 'caramel', 'type': 'ingredient'},
+            {'name': 'quinoa', 'type': 'ingredient'},
+            {'name': 'soy', 'type': 'ingredient'},
+            {'name': 'cornstarch', 'type': 'ingredient'},
+            {'name': 'cocoa', 'type': 'ingredient'},
+            {'name': 'zucchini', 'type': 'ingredient'},
+            {'name': 'mustard', 'type': 'ingredient'},
+            {'name': 'jam', 'type': 'ingredient'},
+            {'name': 'spinach', 'type': 'ingredient'},
+            {'name': 'coffee', 'type': 'ingredient'},
+            {'name': 'rib', 'type': 'ingredient'},
+            {'name': 'spaghetti', 'type': 'ingredient'},
+            {'name': 'avocado', 'type': 'ingredient'},
+            {'name': 'almond', 'type': 'ingredient'},
+            {'name': 'asparagus', 'type': 'ingredient'},
+            {'name': 'eggplant', 'type': 'ingredient'},
+            {'name': 'cucumber', 'type': 'ingredient'},
+            {'name': 'okra', 'type': 'ingredient'},
+            {'name': 'margarine', 'type': 'ingredient'},
+            {'name': 'parmesan', 'type': 'ingredient'},
+            {'name': 'cauliflower', 'type': 'ingredient'},
+            {'name': 'lamb', 'type': 'ingredient'},
+            {'name': 'buttermilk', 'type': 'ingredient'},
+            {'name': 'pea', 'type': 'ingredient'},
+            {'name': 'basil', 'type': 'ingredient'},
+            {'name': 'mayonnaise', 'type': 'ingredient'},
+            {'name': 'heart', 'type': 'ingredient'},
+            {'name': 'bun', 'type': 'ingredient'},
+            {'name': 'polenta', 'type': 'ingredient'},
+            {'name': 'duck', 'type': 'ingredient'},
+            {'name': 'oat', 'type': 'ingredient'},
+            {'name': 'turmeric', 'type': 'ingredient'},
+            {'name': 'beet', 'type': 'ingredient'},
+            {'name': 'mango', 'type': 'ingredient'},
+            {'name': 'fish', 'type': 'ingredient'},
+            {'name': 'trout', 'type': 'ingredient'},
+            {'name': 'grasshopper', 'type': 'ingredient'},
+            {'name': 'yeast', 'type': 'ingredient'},
+            {'name': 'bunny', 'type': 'ingredient'},
+            {'name': 'salad', 'type': 'ingredient'},
+            {'name': 'icing', 'type': 'ingredient'},
+            {'name': 'brandy', 'type': 'ingredient'},
+            {'name': 'fruit', 'type': 'ingredient'},
+            {'name': 'kidney', 'type': 'ingredient'},
+            {'name': 'fat', 'type': 'ingredient'},
+            {'name': 'lollipop', 'type': 'ingredient'},
+            {'name': 'roast', 'type': 'ingredient'},
+            {'name': 'leaf', 'type': 'ingredient'},
 
             {'name': 'pot', 'type': 'recipient'},
             {'name': 'colander', 'type': 'recipient'},
             {'name': 'skillet', 'type': 'recipient'},
             {'name': 'saucepan', 'type': 'recipient'},
             {'name': 'basket', 'type': 'recipient'},
-            {'name': 'bowl', 'type': 'recipient'}
+            {'name': 'bowl', 'type': 'recipient'},
+            {'name': 'pan', 'type': 'recipient'},
+            {'name': 'dish', 'type': 'recipient'},
+            {'name': 'whisk', 'type': 'recipient'},
+            {'name': 'container', 'type': 'recipient'},
+            {'name': 'refrigerator', 'type': 'recipient'},
+            {'name': 'bag', 'type': 'recipient'},
+            {'name': 'freezer', 'type': 'recipient'},
+            {'name': 'jar', 'type': 'recipient'},
+            {'name': 'blender', 'type': 'recipient'},
+            {'name': 'surface', 'type': 'recipient'},
+            {'name': 'rack', 'type': 'recipient'},
+            {'name': 'processor', 'type': 'recipient'},
+            {'name': 'board', 'type': 'recipient'},
+            {'name': 'casserole', 'type': 'recipient'},
+            {'name': 'strainer', 'type': 'recipient'},
+            {'name': 'grate', 'type': 'recipient'},
+            {'name': 'bay', 'type': 'recipient'},
+            {'name': 'sieve', 'type': 'recipient'},
+            {'name': 'storage', 'type': 'recipient'},
+            {'name': 'platter', 'type': 'recipient'},
+            {'name': 'brine', 'type': 'recipient'},
+            {'name': 'stovetop', 'type': 'recipient'},
+            {'name': 'bottle', 'type': 'recipient'},
+            {'name': 'stockpot', 'type': 'recipient'},
+            {'name': 'table', 'type': 'recipient'},
+            {'name': 'basin', 'type': 'recipient'},
+            {'name': 'crockpot', 'type': 'recipient'},
+            {'name': 'kettle', 'type': 'recipient'},
+            {'name': 'case', 'type': 'recipient'},
+            {'name': 'oven', 'type': 'recipient'},
+            {'name': 'plate', 'type': 'recipient'},
+            {'name': 'tray', 'type': 'recipient'},
+            {'name': 'griddle', 'type': 'recipient'},
+            {'name': 'wok', 'type': 'recipient'},
+            {'name': 'grill', 'type': 'recipient'},
             ]
 
         self.actions = [
-            {'name': 'clean', 'keywords': ['clean'], 'effects': [('cleaned', ['ingredient'])],
+            {'name': 'clean', 'keywords': ['clean', 'brush'], 'effects': [('cleaned', ['ingredient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient')]},
 
-            {'name': 'cook', 'keywords': ['cook', 'steam', 'bake', 'heat'], 'effects': [('cooked', ['ingredient', 'recipient'])],
+            {'name': 'cook', 'keywords': ['cook', 'steam', 'bake', 'heat', 'grill'], 'effects': [('cooked', ['ingredient', 'recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
 
-            {'name': 'cut', 'keywords': ['cut', 'slice'], 'effects': [('cutted', ['ingredient'])],
+            {'name': 'cut', 'keywords': ['cut', 'slice', 'chop'], 'effects': [('cutted', ['ingredient'])],
+            'parameters': ['ingredient'], 'preconditions': [('have', 'ingredient')]},
+
+            {'name': 'peel', 'keywords': ['peel'], 'effects': [('peeled', ['ingredient'])],
+            'parameters': ['ingredient'], 'preconditions': [('have', 'ingredient')]},
+
+            {'name': 'scoop', 'keywords': ['scoop'], 'effects': [('scooped', ['ingredient'])],
+            'parameters': ['ingredient'], 'preconditions': [('have', 'ingredient')]},
+
+            {'name': 'squash', 'keywords': ['squash', 'beat', 'knead'], 'effects': [('squashed', ['ingredient'])],
             'parameters': ['ingredient'], 'preconditions': [('have', 'ingredient')]},
 
             {'name': 'cover', 'keywords': ['cover'], 'effects': [('covered', ['recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'recipient')]},
 
-            {'name': 'put', 'keywords': ['put', 'add', 'fill', 'toss', 'place', 'beat', 'sprinkle', 'mix'], 'effects': [('in', ['ingredient', 'recipient'])],
+            {'name': 'put', 'keywords': ['put', 'add', 'fill', 'toss', 'place', 'beat', 'sprinkle', 'mix', 'spread', 'blend', 'spray', 'store'], 'effects': [('in', ['ingredient', 'recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
 
-            {'name': 'pour', 'keywords': ['pour', 'drain'], 'effects': [('poured', ['recipient'])],
+            {'name': 'pour', 'keywords': ['pour', 'drain', 'dry', 'rinse', 'soak'], 'effects': [('poured', ['recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]},
 
             {'name': 'stir', 'keywords': ['stir'], 'effects': [('stirred', ['recipient'])],
@@ -70,9 +200,11 @@ class RuleBased2:
             {'name': 'shake', 'keywords': ['shake'], 'effects': [('shaked', ['recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'recipient')]},
 
-            {'name': 'boil', 'keywords': ['boil'], 'effects': [('boiled', ['ingredient', 'recipient'])],
+            {'name': 'boil', 'keywords': ['boil', 'simmer'], 'effects': [('boiled', ['ingredient', 'recipient'])],
             'parameters': ['ingredient', 'recipient'], 'preconditions': [('have', 'ingredient'), ('have', 'recipient')]}
         ]
+
+
 
         if self.config == None:
             raise Exception("Configuration parameters not available!")
@@ -248,7 +380,14 @@ class RuleBased2:
 
 
         # Try to devise a plan for described domain and problem
-        plan = pyperplan.search_plan(domain_file, problem_file, pyperplan.SEARCHES['bfs'], None)
+        try:
+            plan = func_timeout(120, pyperplan.search_plan, args=(domain_file, problem_file, pyperplan.SEARCHES['bfs'], None))
+        except FunctionTimedOut:
+            with open('planner_timeout.log', 'a') as file_timeout:
+                file_timeout.write("{}\n".format(instance['name']))
+
+            print("Planner timeout reached")
+            plan = None
 
         if plan == None:
             plan = []
