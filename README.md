@@ -7,6 +7,14 @@ All experiments in here uses our custom WikiHow recipes dataset. We make availab
 * Scripts to generate WikiHow Recipes Dataset.
 * Scripts to reproduce our experiments.
 
+
+## Requirements
+
+* Spacy
+** Install dictionary
+``python -m spacy download en_core_web_sm
+``
+
 ## How to run
 
 To generate WikiHow Recipes Dataset
